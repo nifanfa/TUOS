@@ -25,6 +25,16 @@ namespace ConsoleApp1
             ACPI.Initialize();
             PCIExpress.Initialize();
 
+            DiskIO.Initialize();
+            ATA.Initialize();
+
+            if(DiskIO.Disks.Count == 0)
+            {
+                Console.Write("FATAL: no disk available.\n");
+                for (; ; );
+            }
+            VirtualFilesystem vfs = new TarFS(DiskIO.Disks[0]);
+            
             Console.Write("Initializing network...\n");
             NETv4.Initialize();
             Intel825xx.Initialize();
@@ -81,6 +91,8 @@ namespace ConsoleApp1
             }
 #endif
 
+            FTPServer.Start(vfs, "root", "tuos", 21);
+            for (; ; ) FTPServer.Run();
 
             for (; ; ) Native.hlt();
         }
