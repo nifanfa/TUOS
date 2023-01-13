@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+
+		<IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+		<IlcInvariantGlobalization>true</IlcInvariantGlobalization>
+		<IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+		<NoStdLib>true</NoStdLib>
+		<NoConfig>true</NoConfig>
+		<RuntimeMetadataVersion>v4.0.30319</RuntimeMetadataVersion>
+		<Optimize>true</Optimize>
+		<IlcOptimizationPreference>Size</IlcOptimizationPreference>
+		<IlcDisableReflection>true</IlcDisableReflection>
+		<IncludePal>true</IncludePal>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+		<ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+		
+		<IlcSystemModule>ConsoleApp1</IlcSystemModule>
+		<EntryPointSymbol>Main</EntryPointSymbol>
+
+		<LinkerSubsystem>NATIVE</LinkerSubsystem>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<NativeLibrary Include="$(MSBuildStartupDirectory)\x64\Debug\LowlevelLib.lib" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<LinkerArg Include="/fixed /safeseh:no /base:0x800000 /map:ConsoleApp1.map" />
+	</ItemGroup>
+
+	<!--Warning: This package is modified(/packages). Using official one may cause it fail to compile!-->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-alpha.1.22074.1" />
+	</ItemGroup>
+
+	<Target Name="CustomizeReferences" BeforeTargets="BeforeCompile" AfterTargets="FindReferenceAssembliesForReferences">
+		<ItemGroup>
+			<ReferencePathWithRefAssemblies Remove="@(ReferencePathWithRefAssemblies)" />
+			<ReferencePath Remove="@(ReferencePath)" />
+		</ItemGroup>
+	</Target>
+
+	<Target Name="BuildISO" AfterTargets="Publish">
+		<Exec WorkingDirectory="$(MSBuildStartupDirectory)" Command="&quot;$(MSBuildStartupDirectory)\nasm.exe&quot; -fbin &quot;$(MSBuildStartupDirectory)\EntryPoint.asm&quot; -o &quot;$(MSBuildProjectDirectory)\$(NativeOutputPath)loader.o&quot;"></Exec>
+		<Exec Command="cmd.exe /c copy /b &quot;$(MSBuildProjectDirectory)\$(NativeOutputPath)loader.o&quot;+&quot;$(MSBuildProjectDirectory)\$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)&quot; &quot;$(MSBuildStartupDirectory)\grub2\boot\kernel.bin&quot;"></Exec>
+		<Delete Files="$(MSBuildProjectDirectory)\$(NativeOutputPath)loader.o"></Delete>
+		<Exec Command="&quot;$(MSBuildStartupDirectory)\mkisofs.exe&quot; -relaxed-filenames -J -R -o &quot;$(MSBuildProjectDirectory)\$(NativeOutputPath)$(TargetName).iso&quot; -b boot/grub/i386-pc/eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table &quot;$(MSBuildStartupDirectory)\grub2&quot;"></Exec>
+	</Target>
+
+	<Target Name="RunVMware" AfterTargets="BuildISO">
+		<Error Text="Please install VMWare Player in order to Debug!" Condition="!Exists('C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe')And!Exists('C:\Program Files (x86)\VMware\VMware Workstation\vmplayer.exe')"></Error>
+
+		<Exec Condition="Exists('C:\Program Files (x86)\VMware\VMware Workstation\vmplayer.exe')" Command="&quot;C:\Program Files (x86)\VMware\VMware Workstation\vmplayer.exe&quot; &quot;$(MSBuildStartupDirectory)\TUOS.vmx"></Exec>
+		<Exec Condition="Exists('C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe')And!Exists('C:\Program Files (x86)\VMware\VMware Workstation\vmplayer.exe')" Command="&quot;C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe&quot; &quot;$(MSBuildStartupDirectory)\TUOS.vmx"></Exec>
+	</Target>
+
+</Project>
